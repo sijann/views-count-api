@@ -66,14 +66,15 @@ app.get("/api/count", async (req, res) => {
 
     // Get the store data as a plain JavaScript object
     const plainStore = store.toObject();
+    
 
     // Update the product count and send the response
     return res.json({
       viewsCount: productCount,
       timeframe: store.settings.timeframe,
       displayText: plainStore.settings.displayText
-        .replace(/{{viewsCount}}/g, productCount)
-        .replace(/{{timeframe}}/g, getTimeframeText(store.settings.timeframe)),
+        .replace(/\[count\]/g, productCount)
+        .replace(/\[time\]/g, getTimeframeText(store.settings.timeframe)),
     });
   } catch (error) {
     console.error("Error while processing the request:", error);
