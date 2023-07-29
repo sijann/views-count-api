@@ -1,0 +1,12 @@
+POST http://localhost:3001/api/store
+Content-Type: application/json
+
+{
+  "store_name": "NewStore",
+  "session": "session1",
+  "settings": {
+    "timeframe": "1day",
+    "minimum_count_to_show": 10,
+    "displayText": "{{ viewsCount }} views in last {{ timeframe }}"
+  }
+}
