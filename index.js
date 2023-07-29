@@ -92,11 +92,11 @@ app.get('/api/store/check', async (req, res) =>{
       // Find the store based on the provided store name
       const store = await Store.findOne({ store_name });
       if (!store) {
-        return res.status(404).json({ error: "Store not found" });
+        return res.json({ store: false, error: "Store not found" });
       } else {
         const plainStore = store.toObject();
         return res.json({
-            
+            store: true,
             timeframe: store.settings.timeframe,
             minViews: store.settings.minimum_count_to_show,
             displayText: plainStore.settings.displayText

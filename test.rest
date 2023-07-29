@@ -1,12 +1,11 @@
-POST http://localhost:3001/api/store
+POST http://localhost:3000/api/store/create
 Content-Type: application/json
 
 {
-  "store_name": "NewStore",
-  "session": "session1",
-  "settings": {
-    "timeframe": "1day",
-    "minimum_count_to_show": 10,
-    "displayText": "{{ viewsCount }} views in last {{ timeframe }}"
-  }
+  "store_name": "NewStosree"
 }
+
+
+###
+
+GET http://localhost:3000/api/store/check?store=NewStore
