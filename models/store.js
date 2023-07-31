@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
   productId: { type: String, required: true },
+  views: [{ type: Number }], // Change timestamp to a Number array
   count: { type: Number, default: 0 },
-  timestamp: { type: Date, default: Date.now },
 });
 
 const storeSchema = new mongoose.Schema({

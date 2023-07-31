@@ -26,55 +26,50 @@ app.get("/api/count", async (req, res) => {
       return res.status(404).json({ error: "Store not found" });
     }
 
-    // Get the product count based on the product ID
+    // Get the product data based on the product ID
     const products = store.products || new Map();
-    let productCount = products.get(productId)?.count || 0;
+    let productData = products.get(productId);
 
-    // If the product doesn't exist, start counting from 1 and save the time
-    if (productCount === 0) {
-      productCount = 1;
-      products.set(productId, { count: productCount, timestamp: Date.now() });
-
-      // Update the store data in the database
-      await Store.updateOne({ store_name }, { $set: { products } });
-    } else {
-      // Check if the views count is within the specified timeframe
-      const { timeframe } = store.settings;
-      const currentTime = Date.now();
-      const timeDiff = currentTime - products.get(productId).timestamp;
-      const timeframeMs = getTimeframeMilliseconds(timeframe);
-
-      if (timeDiff >= timeframeMs) {
-        // Reset the count if the timeframe has passed
-        productCount = 1;
-        products.set(productId, {
-          count: productCount,
-          timestamp: currentTime,
-        });
-
-        // Update the store data in the database
-        await Store.updateOne({ store_name }, { $set: { products } });
-      } else {
-        // Increment the count if still within the timeframe
-        productCount++;
-        products.get(productId).count = productCount;
-
-        // Update the store data in the database
-        await Store.updateOne({ store_name }, { $set: { products } });
-      }
+    // Initialize productData if it doesn't exist
+    if (!productData) {
+      productData = { views: [], count: 0 };
+      products.set(productId, productData);
     }
+
+    // Add the current request timestamp to the views array (as a number, not Date)
+    const currentTime = Date.now();
+    productData.views.push(currentTime);
+
+    // Check if the views count is within the specified timeframe
+    const { timeframe, minimum_count_to_show } = store.settings;
+    const timeframeMs = getTimeframeMilliseconds(timeframe);
+    const viewsWithinTimeframe = productData.views.filter(
+      (timestamp) => currentTime - timestamp < timeframeMs
+    );
+
+    // Update the product count
+    const productCount = viewsWithinTimeframe.length;
+    productData.count = productCount;
+
+    // Update the store data in the database
+    await Store.updateOne({ store_name }, { $set: { products } });
 
     // Get the store data as a plain JavaScript object
     const plainStore = store.toObject();
-    
+
+    // Return empty displayText if count is less than minimum_count_to_show
+    let displayText = "";
+    if (productCount >= minimum_count_to_show) {
+      displayText = plainStore.settings.displayText
+        .replace(/\[count\]/g, productCount)
+        .replace(/\[time\]/g, getTimeframeText(store.settings.timeframe));
+    }
 
     // Update the product count and send the response
     return res.json({
       viewsCount: productCount,
       timeframe: store.settings.timeframe,
-      displayText: plainStore.settings.displayText
-        .replace(/\[count\]/g, productCount)
-        .replace(/\[time\]/g, getTimeframeText(store.settings.timeframe)),
+      displayText: displayText,
     });
   } catch (error) {
     console.error("Error while processing the request:", error);
@@ -83,33 +78,35 @@ app.get("/api/count", async (req, res) => {
 });
 
 
+
+
 // Get Store status
 
-app.get('/api/store/check', async (req, res) =>{
+app.get('/api/store/check', async (req, res) => {
 
-    const { store: store_name } = req.query;
+  const { store: store_name } = req.query;
 
-    try {
-      // Find the store based on the provided store name
-      const store = await Store.findOne({ store_name });
-      if (!store) {
-        return res.json({ store: false, error: "Store not found" });
-      } else {
-        const plainStore = store.toObject();
-        return res.json({
-            store: true,
-            timeframe: store.settings.timeframe,
-            minViews: store.settings.minimum_count_to_show,
-            displayText: plainStore.settings.displayText
-          });
-      }
-
+  try {
+    // Find the store based on the provided store name
+    const store = await Store.findOne({ store_name });
+    if (!store) {
+      return res.json({ store: false, error: "Store not found" });
+    } else {
+      const plainStore = store.toObject();
+      return res.json({
+        store: true,
+        timeframe: store.settings.timeframe,
+        minViews: store.settings.minimum_count_to_show,
+        displayText: plainStore.settings.displayText
+      });
     }
-    catch (error) {
-        console.error("Error while processing the request:", error);
-        return res.status(500).json({ error: "Internal server error" });
-      }
-  
+
+  }
+  catch (error) {
+    console.error("Error while processing the request:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
 })
 
 
@@ -130,7 +127,7 @@ app.post("/api/store/create", async (req, res) => {
         settings: {
           timeframe: "1day",
           minimum_count_to_show: 0,
-          displayText: "{{ viewsCount }} views in last {{ timeframe }}",
+          displayText: "[count] views in last [time]",
         },
       });
 
@@ -140,7 +137,7 @@ app.post("/api/store/create", async (req, res) => {
         message: "New store created successfully",
         timeframe: "1day",
         minimum_count_to_show: 0,
-        displayText: "{{ viewsCount }} views in last {{ timeframe }}"
+        displayText: "[count] views in last [time]"
 
 
       });
